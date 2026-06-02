@@ -18,6 +18,9 @@
 .crumb { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); }
 .crumb .sep { opacity: .45; }
 .crumb .cur { color: var(--ink); font-weight: 600; }
+/* On immediately.run, leave room on the right so the host's topnav pulldown
+   tab doesn't cover the menu bar. Not applied under local `vite dev`. */
+.topbar.hosted { padding-right: 96px; }
 .topbar .spacer { flex: 1; }
 .topbar .right { display: flex; align-items: center; gap: 8px; }
 

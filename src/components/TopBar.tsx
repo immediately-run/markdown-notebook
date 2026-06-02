@@ -21,8 +21,11 @@ interface TopBarProps {
 }
 
 export default function TopBar({ current, layout, setLayout, theme, toggleTheme, onSearch }: TopBarProps) {
+  // immediately.run overlays its own topnav pulldown tab in the top-right corner,
+  // which would obscure the menu bar. Reserve empty space there in the production
+  // build (import.meta.env.DEV is false on immediately.run, true under `vite dev`).
   return (
-    <div className="topbar">
+    <div className={import.meta.env.DEV ? 'topbar' : 'topbar hosted'}>
       <div className="brand">
         <img className="mark" src={logoMark} alt="" />
         notebook
