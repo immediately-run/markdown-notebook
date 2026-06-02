@@ -1,10 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
 /* Global foundation: brand fonts, design tokens, and base resets.
    Imported from App.tsx (NOT main.tsx) so immediately.run applies it at runtime.
    Tokens mirror the immediately.run design system — pull colors, fonts, radii,
    and shadows from here rather than hard-coding values. */
-
-/* Web fonts MUST be the first line of the file. */
-@import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 
 /* ---------------------------------------------------------------- DARK (default) */
 :root {
@@ -37,9 +36,9 @@
   --accent-hot:    #c43d96;  /* the saturated "accent tile" magenta */
 
   /* — Type families — */
-  --disp: "Gabarito", system-ui, sans-serif;     /* display / headings */
-  --sans: "Public Sans", system-ui, sans-serif;  /* body / UI */
-  --mono: "Space Mono", ui-monospace, monospace; /* code, stats, labels */
+  --disp: "Gabarito", system-ui, sans-serif;             /* display / headings */
+  --sans: "Public Sans", system-ui, sans-serif;          /* body / UI */
+  --mono: "Space Mono", ui-monospace, monospace;         /* code, stats, labels */
 
   /* — Radii — */
   --r-xs: 5px;    /* logo square, inline code */
@@ -50,18 +49,16 @@
   --r-pill: 30px; /* buttons, nav links, badges */
 
   /* — Elevation — */
-  --shadow-card:  6px 6px 0 var(--accent-2);   /* hard offset on tile hover */
+  --shadow-card:  6px 6px 0 var(--accent-2);            /* hard offset on tile hover */
   --shadow-modal: 0 24px 70px rgba(0,0,0,.5);
   --shadow-pop:   0 12px 34px rgba(0,0,0,.45);
 
-  /* — Ambient page wash (radial accents behind content) — */
-  --page-wash:
-    radial-gradient(60% 50% at 78% 0%, rgba(178,133,242,.12), transparent 60%),
-    radial-gradient(50% 40% at 12% 8%, rgba(244,154,212,.07), transparent 60%);
+  /* — Editor syntax (Monokai-Pro-ish) — */
+  --syn-string:   #ffd866;
 }
 
 /* ---------------------------------------------------------------- LIGHT */
-html[data-theme="light"] {
+html[data-theme="light"], .light, [data-theme="light"] {
   --bg:        #f6f4fb;
   --panel:     #ffffff;
   --panel-2:   #f0ecf8;
@@ -77,27 +74,28 @@ html[data-theme="light"] {
   --glow: 0 0 0 1px rgba(150,90,235,.4), 0 8px 26px rgba(150,90,235,.20);
   --shadow-modal: 0 24px 70px rgba(40,24,70,.18);
   --shadow-pop:   0 12px 34px rgba(40,24,70,.14);
-  --page-wash:
-    radial-gradient(60% 50% at 78% 0%, rgba(154,69,230,.09), transparent 60%),
-    radial-gradient(50% 40% at 12% 8%, rgba(212,69,154,.06), transparent 60%);
 }
 
-/* ---------------------------------------------------------------- reset + base */
+/* ---------------------------------------------------------------- base */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html, body, #root { height: 100%; }
 body {
+  font-family: var(--sans);
   background: var(--bg);
-  background-image: var(--page-wash);
   color: var(--ink);
-  font: 400 16px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-  overflow-x: hidden;
+  overflow: hidden;
 }
-a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+.ic svg { display: block; }
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 8px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); background-clip: padding-box; border: 3px solid transparent; }
+
 ::selection { background: var(--accent); color: #16101a; }
 
-/* Apply the signature gradient to any text: <span className="grad-text">…</span> */
+/* Apply the signature gradient to any text. */
 .grad-text {
   background: var(--grad);
   -webkit-background-clip: text;
