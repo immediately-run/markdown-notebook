@@ -8,15 +8,19 @@
    `import('fs')` to a bridge backed by the real local disk, so the fs backend is
    used locally too. In a production build `fs` is external (provided by the
    sandbox); where it's genuinely unavailable (e.g. `vite preview`), the import
-   throws and we fall back to localStorage so the app still works end-to-end. */
+   throws and we fall back to an in-memory vault so the app still works — note
+   that without fs, edits are not persisted across reloads. We never touch
+   localStorage: it is inaccessible inside the immediately.run iframe sandbox. */
 import type { VaultFile } from './vault';
 import { dirOf } from './vault';
 import { SAMPLE_FILES, SAMPLE_FOLDERS } from '../data/sampleVault';
 
 const ROOT = 'vault';
-const LS_KEY = 'mdnotes:vault';
+/* User tweaks live outside ROOT so the vault walk never picks them up as a note
+   or folder. A plain file at the project root needs no directory to exist. */
+const TWEAKS_PATH = '.mdnotes-tweaks.json';
 
-export type Backend = 'fs' | 'local' | 'memory';
+export type Backend = 'fs' | 'memory';
 export interface VaultSnapshot { files: VaultFile[]; folders: string[]; backend: Backend; }
 
 interface FsLike {
@@ -35,14 +39,14 @@ async function getFs(): Promise<FsLike | null> {
   try {
     // Resolved by vite + @immediately-run/dev-fs under `vite dev`; external (the
     // sandbox's shared fs) in the production build; throws where fs is genuinely
-    // absent (e.g. `vite preview`), where we fall back to localStorage.
+    // absent (e.g. `vite preview`), where we fall back to an in-memory vault.
     const mod = (await import('fs')) as unknown as Record<string, unknown> & { default?: Record<string, unknown> };
     const cand = (mod.promises ?? mod.default?.promises ?? mod.default ?? mod) as FsLike;
     if (cand && typeof cand.readFile === 'function' && typeof cand.writeFile === 'function') {
       fsCache = cand;
     }
   } catch {
-    /* fs unavailable — fall back to localStorage */
+    /* fs unavailable — fall back to an in-memory vault */
   }
   return fsCache;
 }
@@ -80,25 +84,6 @@ async function seedFs(fs: FsLike) {
   for (const f of SAMPLE_FILES) await writeFileFs(fs, f.path, f.body);
 }
 
-/* ----- localStorage backend ----- */
-function readLocal(): { files: VaultFile[]; folders: string[] } | null {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { files: Record<string, string>; folders: string[] };
-    const files = Object.entries(parsed.files || {}).map(([path, body]) => ({ path, body }));
-    return { files, folders: parsed.folders || [] };
-  } catch { return null; }
-}
-
-function writeLocal(files: VaultFile[], folders: string[]) {
-  try {
-    const fileMap: Record<string, string> = {};
-    for (const f of files) fileMap[f.path] = f.body;
-    localStorage.setItem(LS_KEY, JSON.stringify({ files: fileMap, folders }));
-  } catch { /* quota / unavailable — best effort */ }
-}
-
 /* ----- public API ----- */
 export async function loadVault(): Promise<VaultSnapshot> {
   const fs = await getFs();
@@ -113,35 +98,47 @@ export async function loadVault(): Promise<VaultSnapshot> {
       if (files.length === 0) { await seedFs(fs); await walkFs(fs, '', files, folders); }
       return { files, folders, backend: 'fs' };
     } catch {
-      /* fall through to local */
+      /* fall through to in-memory */
     }
   }
-  const local = readLocal();
-  if (local) return { ...local, backend: 'local' };
-  // first run without fs: seed localStorage from the sample vault
-  if (typeof localStorage !== 'undefined') {
-    writeLocal(SAMPLE_FILES, SAMPLE_FOLDERS);
-    return { files: SAMPLE_FILES.map((f) => ({ ...f })), folders: [...SAMPLE_FOLDERS], backend: 'local' };
-  }
+  // No fs: serve the sample vault from memory (edits won't survive a reload).
   return { files: SAMPLE_FILES.map((f) => ({ ...f })), folders: [...SAMPLE_FOLDERS], backend: 'memory' };
 }
 
-/* Persist a single note. `all`/`folders` are the current full state, used to keep
-   the localStorage snapshot coherent when fs isn't the backend. */
-export async function saveNote(path: string, body: string, all: VaultFile[], folders: string[]): Promise<void> {
+/* Persist a single note. When fs is unavailable the vault is in-memory only, so
+   there is nothing to persist and these are no-ops. */
+export async function saveNote(path: string, body: string): Promise<void> {
   const fs = await getFs();
-  if (fs) { try { await writeFileFs(fs, path, body); return; } catch { /* fall back */ } }
-  writeLocal(all, folders);
+  if (fs) { try { await writeFileFs(fs, path, body); } catch { /* in-memory: best effort */ } }
 }
 
-export async function createNote(path: string, body: string, all: VaultFile[], folders: string[]): Promise<void> {
+export async function createNote(path: string, body: string): Promise<void> {
   const fs = await getFs();
-  if (fs) { try { await writeFileFs(fs, path, body); return; } catch { /* fall back */ } }
-  writeLocal(all, folders);
+  if (fs) { try { await writeFileFs(fs, path, body); } catch { /* in-memory: best effort */ } }
 }
 
-export async function createFolder(path: string, all: VaultFile[], folders: string[]): Promise<void> {
+export async function createFolder(path: string): Promise<void> {
   const fs = await getFs();
-  if (fs) { try { await ensureDir(fs, path); return; } catch { /* fall back */ } }
-  writeLocal(all, folders);
+  if (fs) { try { await ensureDir(fs, path); } catch { /* in-memory: best effort */ } }
+}
+
+/* ----- user tweaks (theme / editor prefs) ----- */
+export async function loadTweaks<T>(): Promise<T | null> {
+  const fs = await getFs();
+  if (!fs) return null;
+  try {
+    return JSON.parse(await fs.readFile(TWEAKS_PATH, 'utf8')) as T;
+  } catch {
+    return null; // not written yet, or fs read failed
+  }
+}
+
+export async function saveTweaks<T>(value: T): Promise<void> {
+  const fs = await getFs();
+  if (!fs) return;
+  try {
+    await fs.writeFile(TWEAKS_PATH, JSON.stringify(value));
+  } catch {
+    /* in-memory: best effort */
+  }
 }

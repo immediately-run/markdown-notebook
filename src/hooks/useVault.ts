@@ -57,7 +57,7 @@ export function useVault(): Vault {
       const entry = filesRef.current.find((f) => f.path === path);
       if (!entry) return;
       const body = entry.body;
-      saveNote(path, body, filesRef.current, foldersRef.current).then(() => {
+      saveNote(path, body).then(() => {
         setSaved((prev) => ({ ...prev, [path]: body }));
       });
     }, SAVE_DELAY);
@@ -80,7 +80,7 @@ export function useVault(): Vault {
     const next = [...filesRef.current, { path, body }];
     setFiles(next);
     setSaved((prev) => ({ ...prev, [path]: body }));
-    persistNewNote(path, body, next, foldersRef.current);
+    persistNewNote(path, body);
     return n;
   }, []);
 
@@ -89,7 +89,7 @@ export function useVault(): Vault {
     while (foldersRef.current.includes(n)) n = 'New folder ' + ++i;
     const next = [...foldersRef.current, n];
     setFolders(next);
-    persistNewFolder(n, filesRef.current, next);
+    persistNewFolder(n);
   }, []);
 
   const dirty = useMemo(() => {
