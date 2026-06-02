@@ -20,12 +20,24 @@ interface TopBarProps {
   onSearch: () => void;
 }
 
+// immediately.run runs the app inside an iframe and overlays its own topnav
+// pulldown tab in the top-right corner, which would obscure the menu bar. When
+// hosted, reserve empty space there. We can't use `import.meta.env.DEV` for this
+// — the in-browser transpiler doesn't treat files as modules, so `import.meta`
+// throws "Cannot use 'import.meta' outside a module". Detect the iframe instead;
+// plain `vite dev` runs at the top level.
+function isHosted(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // Cross-origin access to window.top throws — that only happens when framed.
+    return true;
+  }
+}
+
 export default function TopBar({ current, layout, setLayout, theme, toggleTheme, onSearch }: TopBarProps) {
-  // immediately.run overlays its own topnav pulldown tab in the top-right corner,
-  // which would obscure the menu bar. Reserve empty space there in the production
-  // build (import.meta.env.DEV is false on immediately.run, true under `vite dev`).
   return (
-    <div className={import.meta.env.DEV ? 'topbar' : 'topbar hosted'}>
+    <div className={isHosted() ? 'topbar hosted' : 'topbar'}>
       <div className="brand">
         <img className="mark" src={logoMark} alt="" />
         notebook
